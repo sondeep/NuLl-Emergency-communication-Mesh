@@ -417,10 +417,15 @@
     </main>
 
     <script>
-        // --- API & DATA SIMULATION (The "backend" logic now in JS) ---
+        // --- GLOBAL STATE ---
         const localAlerts = [];
         let alertIdCounter = 100; // Start high to distinguish from mock data
         const MOCK_USER_ID = 'local_node_' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        
+        // Stores the last known location of the user
+        let currentLatitude = 0;
+        let currentLongitude = 0;
+
         const alertsListElement = document.getElementById('alerts-list');
         const statusMessageElement = document.getElementById('status-message');
         
@@ -443,6 +448,56 @@
         });
 
 
+        // --- GEOLOCATION API ---
+
+        /**
+         * Requests the user's current live location using the Geolocation API.
+         * Stores the result in currentLatitude and currentLongitude.
+         */
+        function getLiveLocation(callback = () => {}) {
+            if (!navigator.geolocation) {
+                showStatusMessage('Geolocation is not supported by your browser.', 'error');
+                callback(false);
+                return;
+            }
+
+            // Options for high accuracy and timeout
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            };
+
+            showStatusMessage('Requesting live location...', 'info');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Success callback
+                    currentLatitude = position.coords.latitude.toFixed(4);
+                    currentLongitude = position.coords.longitude.toFixed(4);
+                    
+                    showStatusMessage(`Location acquired: Lat ${currentLatitude}, Lon ${currentLongitude}`, 'success');
+                    callback(true);
+                },
+                (error) => {
+                    // Error callback
+                    let errorMessage = 'Location access denied.';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMessage = 'Please enable location services for this app.';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMessage = 'Location information is unavailable.';
+                    } else if (error.code === error.TIMEOUT) {
+                        errorMessage = 'Location request timed out.';
+                    }
+                    
+                    showStatusMessage(`Location Error: ${errorMessage}`, 'error');
+                    callback(false);
+                },
+                options
+            );
+        }
+
+
         // --- UTILITY FUNCTIONS ---
 
         function showStatusMessage(message, type = 'info') {
@@ -460,37 +515,35 @@
             const date = new Date(timestamp);
             return date.toLocaleTimeString() + ' • ' + date.toLocaleDateString();
         }
+        
+        function getCurrentLocationString() {
+            if (currentLatitude === 0 && currentLongitude === 0) {
+                return 'Location Unknown';
+            }
+            return `Live Coords (${currentLatitude}, ${currentLongitude})`;
+        }
+
 
         // --- CORE DATA FUNCTIONS (Simulated API Calls) ---
 
-        /**
-         * Simulates the GET /api/alerts call. Retrieves and displays data.
-         */
         function fetchAlerts() {
-            // Sort by timestamp (most recent first) and return the top 5
             const sortedAlerts = localAlerts.sort((a, b) => b.timestamp - a.timestamp);
             const recentAlerts = sortedAlerts.slice(0, 5);
             displayAlerts(recentAlerts);
         }
 
-        /**
-         * Simulates the POST /api/alerts call. Adds a new alert to the data store.
-         * @param {string} message 
-         * @param {string} type 
-         */
         function postNewAlert(message, type) {
             const newAlert = {
                 id: alertIdCounter++,
                 message: message,
                 type: type,
-                location: 'Current Location (50.11, -8.68)', // Mock location
+                location: getCurrentLocationString(),
                 timestamp: Date.now(),
                 userId: MOCK_USER_ID
             };
             
             localAlerts.push(newAlert);
             
-            // Immediately refresh the list to show the new alert
             fetchAlerts();
             
             let typeLabel = type === 'emergency' ? 'EMERGENCY' : 'STATUS';
@@ -519,7 +572,7 @@
                     <div class="alert ${typeClass}">
                         <div class="alert-title">${alertTitleText}</div>
                         <div class="alert-meta">
-                            User: ${alert.userId} | ${alert.location} | ${formatTimestamp(alert.timestamp)}
+                            Node ID: ${alert.userId} | Location: ${alert.location} | Time: ${formatTimestamp(alert.timestamp)}
                         </div>
                     </div>
                 `;
@@ -528,7 +581,7 @@
         }
 
 
-        // --- BUTTON HANDLERS (Now using the simulated API) ---
+        // --- BUTTON HANDLERS ---
 
         function sendEmergencyAlert() {
             postNewAlert("Critical distress signal received. Requesting immediate aid.", 'emergency');
@@ -541,16 +594,26 @@
             } else if (statusType === 'SAFE') {
                 message = "My current location is secure. No immediate threat detected.";
             }
-            postNewAlert(message, 'status');
+            
+            // Before broadcasting, try to get the most accurate location
+            getLiveLocation(() => {
+                 postNewAlert(message, 'status');
+            });
         }
         
-        // Renaming the old button functions to use the new logic
         function requestAssistance() {
             postNewAlert("Non-critical assistance needed: Shelter repair is required.", 'emergency');
         }
 
         function shareLocation() {
-            showStatusMessage('Location sharing activated in the mesh network.', 'info');
+            // Get location first, then show a success message
+            getLiveLocation((success) => {
+                if (success) {
+                    showStatusMessage(`Your current live coordinates (${currentLatitude}, ${currentLongitude}) have been shared with the mesh network.`, 'success');
+                } else {
+                    showStatusMessage('Failed to share location. Access was denied or unavailable.', 'error');
+                }
+            });
         }
 
         function joinCoordination() {
@@ -560,12 +623,15 @@
 
         // --- INITIALIZATION ---
         window.onload = function() {
-            fetchAlerts(); // Load initial data
-            // Update status every 30 seconds
-            setInterval(updateMeshStatus, 30000);
+            // 1. Attempt to get initial location when the app loads
+            getLiveLocation(); 
+
+            // 2. Load initial mock data
+            fetchAlerts(); 
             
-            // Set up local data polling to simulate mesh updates (optional, for demo freshness)
-            setInterval(fetchAlerts, 5000); 
+            // 3. Set up simulation intervals
+            setInterval(updateMeshStatus, 30000); // Mesh status check
+            setInterval(fetchAlerts, 5000);      // Simulated data refresh
         };
 
         // Existing Mesh Status Simulation

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmergencyMesh - Decentralized Emergency Network</title>
+    <style>
+        /* General Setup */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f9fb; /* Light background for better contrast */
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Message Box for Status Updates (Replaces alert()) */
+        .message-box {
+            transition: opacity 0.3s ease-in-out;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            opacity: 0; /* Starts hidden */
+        }
+        .message-box.success { background-color: #d1fae5; color: #065f46; } /* Green */
+        .message-box.info { background-color: #dbeafe; color: #1e40af; } /* Blue */
+        .message-box.error { background-color: #fee2e2; color: #991b1b; } /* Red */
+        
+        /* Header */
+        header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 1rem 0;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 2rem;
+            height: 2rem;
+            color: #dc2626; /* Changed to red for emergency theme */
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .logo-text p {
+            font-size: 0.875rem;
+            color: #737373;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: #059669; /* Green for active */
+            color: #ffffff;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-badge.disconnected {
+            background-color: #dc2626;
+        }
+
+        /* Main Content */
+        main {
+            padding: 2rem 0;
+        }
+
+        /* Emergency Button */
+        .emergency-button {
+            width: 100%;
+            height: 6rem;
+            background-color: #dc2626;
+            color: #ffffff;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+        }
+
+        .emergency-button:hover {
+            background-color: #b91c1c;
+            box-shadow: 0 6px 16px rgba(185, 28, 28, 0.6);
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #525252;
+        }
+
+        .card-header svg {
+            width: 1rem;
+            height: 1rem;
+            color: #1a1a1a;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-description {
+            font-size: 0.875rem;
+            color: #737373;
+        }
+
+        /* Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: #737373;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Alerts */
+        .alert {
+            background-color: #fef2f2; /* Light red for alerts */
+            border: 1px solid #fca5a5;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .alert.status {
+            background-color: #f0fdf4; /* Light green for status */
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert:last-child {
+            margin-bottom: 0;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 0.25rem;
+        }
+        
+        .alert.status .alert-title {
+            color: #059669;
+        }
+
+        .alert-meta {
+            font-size: 0.75rem;
+            color: #737373;
+        }
+        
+        #alerts-list {
+            min-height: 100px; /* Ensure space when empty */
+        }
+
+        /* Action Buttons */
+        .action-button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .action-button:hover {
+            background-color: #f5f5f5;
+            border-color: #cbd5e1;
+        }
+
+        .action-button:last-child {
+            margin-bottom: 0;
+        }
+
+        .action-button svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .status-grid,
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Icons (Lucide-style SVGs) */
+        .icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Message Box for Status -->
+    <div id="status-message" class="message-box opacity-0"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <!-- Icon for Mesh/Wifi -->
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                    </svg>
+                    <div class="logo-text">
+                        <h1>EmergencyMesh</h1>
+                        <p>Decentralized Emergency Network</p>
+                    </div>
+                </div>
+                <div class="status-badge" id="statusBadge">
+                    <!-- Icon for Wifi Connection -->
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                    Mesh Active
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <div class="container">
+            <!-- Emergency Alert Button -->
+            <button class="emergency-button" onclick="sendEmergencyAlert()">
+                <!-- Icon for Alert/Info -->
+                <svg class="icon" style="width: 2rem; height: 2rem;" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                SEND EMERGENCY ALERT
+            </button>
+
+            <!-- Status Cards -->
+            <div class="status-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <!-- Icon for Map Pin -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Coverage
+                    </div>
+                    <div class="card-value">2.4km</div>
+                    <div class="card-description">Network radius</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <!-- Icon for Wifi Connection -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                        </svg>
+                        Signal Strength
+                    </div>
+                    <div class="card-value">Strong</div>
+                    <div class="card-description">Optimal connection</div>
+                </div>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <!-- Recent Alerts (Now Dynamic) -->
+                <div class="card">
+                    <h2 class="card-title">Recent Alerts</h2>
+                    <p class="card-subtitle">Emergency broadcasts in your area</p>
+                    
+                    <!-- Alerts will be inserted here by JavaScript -->
+                    <div id="alerts-list">
+                        <p class="alert status">Loading local alerts...</p>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <h2 class="card-title">Quick Actions</h2>
+                    <p class="card-subtitle">Common emergency responses</p>
+
+                    <button class="action-button" onclick="broadcastStatus('SAFE')">
+                        <!-- Icon for Send/Compass -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        Broadcast 'I am Safe' Status
+                    </button>
+
+                    <button class="action-button" onclick="broadcastStatus('SUPPLY')">
+                        <!-- Icon for Users -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Request Supplies
+                    </button>
+
+                    <button class="action-button" onclick="shareLocation()">
+                        <!-- Icon for Location -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Share Location
+                    </button>
+
+                    <button class="action-button" onclick="joinCoordination()">
+                        <!-- Icon for Wifi Connection -->
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                        </svg>
+                        Join Relief Coordination
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- API & DATA SIMULATION (The "backend" logic now in JS) ---
+        const localAlerts = [];
+        let alertIdCounter = 100; // Start high to distinguish from mock data
+        const MOCK_USER_ID = 'local_node_' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const alertsListElement = document.getElementById('alerts-list');
+        const statusMessageElement = document.getElementById('status-message');
+        
+        // Initial Mock Data (Simulates the Python backend's initial data)
+        localAlerts.push({
+            id: alertIdCounter++,
+            message: 'System Status: All systems nominal.',
+            type: 'status',
+            location: 'HQ (34.05, -118.24)',
+            timestamp: Date.now() - 3600000, // 1 hour ago (in ms)
+            userId: 'SYSTEM'
+        });
+        localAlerts.push({
+            id: alertIdCounter++,
+            message: 'Triage team urgently needed in Sector 5.',
+            type: 'emergency',
+            location: 'Sector 5 (40.71, -74.00)',
+            timestamp: Date.now() - 600000, // 10 minutes ago
+            userId: 'CMD_NODE'
+        });
+
+
+        // --- UTILITY FUNCTIONS ---
+
+        function showStatusMessage(message, type = 'info') {
+            statusMessageElement.textContent = message;
+            statusMessageElement.className = `message-box ${type}`;
+            statusMessageElement.style.opacity = '1';
+
+            // Hide after 4 seconds
+            setTimeout(() => {
+                statusMessageElement.style.opacity = '0';
+            }, 4000);
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString() + ' • ' + date.toLocaleDateString();
+        }
+
+        // --- CORE DATA FUNCTIONS (Simulated API Calls) ---
+
+        /**
+         * Simulates the GET /api/alerts call. Retrieves and displays data.
+         */
+        function fetchAlerts() {
+            // Sort by timestamp (most recent first) and return the top 5
+            const sortedAlerts = localAlerts.sort((a, b) => b.timestamp - a.timestamp);
+            const recentAlerts = sortedAlerts.slice(0, 5);
+            displayAlerts(recentAlerts);
+        }
+
+        /**
+         * Simulates the POST /api/alerts call. Adds a new alert to the data store.
+         * @param {string} message 
+         * @param {string} type 
+         */
+        function postNewAlert(message, type) {
+            const newAlert = {
+                id: alertIdCounter++,
+                message: message,
+                type: type,
+                location: 'Current Location (50.11, -8.68)', // Mock location
+                timestamp: Date.now(),
+                userId: MOCK_USER_ID
+            };
+            
+            localAlerts.push(newAlert);
+            
+            // Immediately refresh the list to show the new alert
+            fetchAlerts();
+            
+            let typeLabel = type === 'emergency' ? 'EMERGENCY' : 'STATUS';
+            showStatusMessage(`${typeLabel} Alert broadcasted successfully!`, type === 'emergency' ? 'error' : 'success');
+        }
+
+
+        // --- DISPLAY LOGIC ---
+
+        function displayAlerts(alerts) {
+            alertsListElement.innerHTML = ''; // Clear existing alerts
+            
+            if (alerts.length === 0) {
+                alertsListElement.innerHTML = '<p class="alert status">No recent broadcasts found in the mesh network.</p>';
+                return;
+            }
+
+            alerts.forEach(alert => {
+                const isEmergency = alert.type === 'emergency';
+                const typeClass = isEmergency ? '' : 'status';
+                const alertTitleText = isEmergency ? 
+                    `EMERGENCY: ${alert.message}` : 
+                    `Status Update: ${alert.message}`;
+
+                const alertHtml = `
+                    <div class="alert ${typeClass}">
+                        <div class="alert-title">${alertTitleText}</div>
+                        <div class="alert-meta">
+                            User: ${alert.userId} | ${alert.location} | ${formatTimestamp(alert.timestamp)}
+                        </div>
+                    </div>
+                `;
+                alertsListElement.insertAdjacentHTML('beforeend', alertHtml);
+            });
+        }
+
+
+        // --- BUTTON HANDLERS (Now using the simulated API) ---
+
+        function sendEmergencyAlert() {
+            postNewAlert("Critical distress signal received. Requesting immediate aid.", 'emergency');
+        }
+
+        function broadcastStatus(statusType) {
+            let message = "User is safe and accounted for.";
+            if (statusType === 'SUPPLY') {
+                message = "Need water and basic medical supplies in my vicinity.";
+            } else if (statusType === 'SAFE') {
+                message = "My current location is secure. No immediate threat detected.";
+            }
+            postNewAlert(message, 'status');
+        }
+        
+        // Renaming the old button functions to use the new logic
+        function requestAssistance() {
+            postNewAlert("Non-critical assistance needed: Shelter repair is required.", 'emergency');
+        }
+
+        function shareLocation() {
+            showStatusMessage('Location sharing activated in the mesh network.', 'info');
+        }
+
+        function joinCoordination() {
+            showStatusMessage('Joined relief coordination channel successfully.', 'info');
+        }
+
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            fetchAlerts(); // Load initial data
+            // Update status every 30 seconds
+            setInterval(updateMeshStatus, 30000);
+            
+            // Set up local data polling to simulate mesh updates (optional, for demo freshness)
+            setInterval(fetchAlerts, 5000); 
+        };
+
+        // Existing Mesh Status Simulation
+        function updateMeshStatus() {
+            const badge = document.getElementById('statusBadge');
+            const isConnected = Math.random() > 0.1; // 90% chance of connection
+            
+            if (isConnected) {
+                badge.className = 'status-badge';
+                badge.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                    Mesh Active
+                `;
+            } else {
+                badge.className = 'status-badge disconnected';
+                badge.innerHTML = `
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                    Disconnected
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

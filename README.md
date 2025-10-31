@@ -1,1 +1,0 @@
-# NuLl-Emergency-communication-Mesh
